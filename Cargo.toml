@@ -10,11 +10,6 @@ license = "MIT"
 repository = "https://github.com/MordechaiHadad/bob"
 rust-version = "1.85"
 
-[features]
-default = ["rustls-tls"]
-native-tls = ["reqwest/default-tls"]
-rustls-tls = ["reqwest/rustls-tls-native-roots"]
-
 [dependencies]
 anyhow = "1.0.52"
 cfg-if = "1.0"
@@ -60,7 +55,7 @@ optional = false
 
 [dependencies.reqwest]
 version = "0.12"
-features = ["stream", "rustls-tls"]
+features = ["stream", "rustls-tls-native-roots"]
 optional = false
 default-features = false
 

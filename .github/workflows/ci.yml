@@ -121,13 +121,6 @@ jobs:
               PATH: target/optimized/bob,
               TARGET: "",
             }
-        tls:
-          - { NAME: Rustls, SUFFIX: "", ARGS: "" }
-          - {
-              NAME: OpenSSL,
-              SUFFIX: "-openssl",
-              ARGS: "--no-default-features --features native-tls",
-            }
     runs-on: ${{matrix.os.OS}}
     steps:
       - uses: actions/checkout@v4
@@ -140,17 +133,14 @@ jobs:
       - name: Add Rust target for cross-compilation
         if: matrix.os.TARGET != ''
         run: rustup target add ${{ matrix.os.TARGET }}
-      - name: Install OpenSSL libraries
-        run: sudo apt update && sudo apt install libssl-dev
-        if: matrix.os.OS == 'ubuntu-latest' && matrix.tls.NAME == 'OpenSSL'
       - uses: Swatinem/rust-cache@v1
       - name: Build Bob
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked --profile optimized ${{ matrix.tls.ARGS }} ${{ matrix.os.TARGET != '' && format('--target {0}', matrix.os.TARGET) || '' }}
+          args: --locked --profile optimized ${{ matrix.os.TARGET != '' && format('--target {0}', matrix.os.TARGET) || '' }}
       - name: Install AppImage tools
-        if: matrix.os.NAME == 'linux' && matrix.tls.NAME == 'Rustls'
+        if: matrix.os.NAME == 'linux'
         run: |
           sudo apt update && sudo apt install -y libfuse2 # Needed by AppImage/linuxdeploy
 
@@ -166,7 +156,7 @@ jobs:
           chmod +x linuxdeploy linuxdeploy-plugin-appimage
 
       - name: Prepare AppDir
-        if: matrix.os.NAME == 'linux' && matrix.tls.NAME == 'Rustls'
+        if: matrix.os.NAME == 'linux'
         run: |
           mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
           cp target/optimized/bob AppDir/usr/bin/
@@ -186,7 +176,7 @@ jobs:
           ls -l AppDir/usr/bin/bob
 
           export UPD_INFO="gh-releases-zsync|Matsuuu|bob|latest|bob-${{ matrix.os.ARCH }}.AppImage.zsync"
-          export OUTPUT="bob-${{ matrix.os.ARCH }}${{ matrix.tls.SUFFIX }}.AppImage"
+          export OUTPUT="bob-${{ matrix.os.ARCH }}.AppImage"
 
           # Change --executable path to be relative to CWD
           ./linuxdeploy --appdir AppDir --executable AppDir/usr/bin/bob --desktop-file AppDir/bob.desktop --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/bob.png --output appimage
@@ -200,15 +190,15 @@ jobs:
       - name: Upload Bob binary
         uses: actions/upload-artifact@v4
         with:
-          name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}${{ matrix.tls.SUFFIX }}"
+          name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}"
           path: ${{ matrix.os.PATH }}
           if-no-files-found: error
           retention-days: 7
       - name: Upload Bob AppImage
-        if: matrix.os.NAME == 'linux' && matrix.tls.NAME == 'Rustls'
+        if: matrix.os.NAME == 'linux'
         uses: actions/upload-artifact@v4
         with:
-          name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}${{ matrix.tls.SUFFIX }}-appimage"
-          path: "bob-${{ matrix.os.ARCH }}${{ matrix.tls.SUFFIX }}.AppImage*"
+          name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}-appimage"
+          path: "bob-${{ matrix.os.ARCH }}.AppImage*"
           if-no-files-found: error
           retention-days: 7

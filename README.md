@@ -40,6 +40,7 @@ Bob is a cross-platform and easy-to-use Neovim version manager, allowing for eas
 
 - **2024-05-17**: Support for `nvim-qt` is now deprecated as Neovim no longer supports it in newer releases. If you're currently using `nvim-qt`, we recommend switching to a different Neovim GUI or using Neovim in the terminal. Please refer to the Neovim documentation for more information on supported GUIs.
 - **2024-05-19**: Important notice for users who built Neovim from source using a commit hash before the newest Bob version: Due to recent changes in Bob, these versions will need to be rebuilt. Alternatively, you can manually add a file named `full-hash.txt` at the root of the directory. This file should contain the full hash of the commit used to build Neovim. This change ensures better tracking and management of versions built from source. We apologize for any inconvenience and appreciate your understanding.
+- **2025-12-30**: OpenSSL builds are now fully deprecated due to redundancy and maintenance overhead. Please switch to the standard bob builds.
 
 ## 📦 Requirements
 
