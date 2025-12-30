@@ -139,48 +139,43 @@ jobs:
         with:
           command: build
           args: --locked --profile optimized ${{ matrix.os.TARGET != '' && format('--target {0}', matrix.os.TARGET) || '' }}
-      - name: Install AppImage tools
+      - name: Install AppImage tools & cargo-appimage
         if: matrix.os.NAME == 'linux'
         run: |
-          sudo apt update && sudo apt install -y libfuse2 # Needed by AppImage/linuxdeploy
+          set -euo pipefail
+          sudo apt update && sudo apt install -y libfuse2
 
-          # Determine the correct architecture for linuxdeploy download
-          DOWNLOAD_ARCH=${{ matrix.os.ARCH }}
-          if [[ "${{ matrix.os.ARCH }}" == "arm" ]]; then
-            DOWNLOAD_ARCH="aarch64"
+          ARCH="${{ matrix.os.ARCH }}"
+          if [ "$ARCH" = "arm" ] || [ "$ARCH" = "aarch64" ]; then
+            URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage"
+          else
+            URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
           fi
 
-          echo "Downloading linuxdeploy tools for architecture: $DOWNLOAD_ARCH"
-          wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$DOWNLOAD_ARCH.AppImage" -O linuxdeploy
-          wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-$DOWNLOAD_ARCH.AppImage" -O linuxdeploy-plugin-appimage
-          chmod +x linuxdeploy linuxdeploy-plugin-appimage
+          echo "Downloading appimagetool from $URL"
+          wget -c "$URL" -O appimagetool
+          chmod +x appimagetool
 
-      - name: Prepare AppDir
+          # Move into PATH so tooling can call it
+          sudo mv appimagetool /usr/local/bin/appimagetool
+          echo "appimagetool installed at: $(command -v appimagetool)"
+
+          cargo install cargo-appimage --locked
+      - name: Build AppImage with cargo-appimage
         if: matrix.os.NAME == 'linux'
         run: |
-          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
-          cp target/optimized/bob AppDir/usr/bin/
-          cp resources/bob-icon.png AppDir/usr/share/icons/hicolor/256x256/apps/bob.png
-          cat <<EOF > AppDir/bob.desktop
-          [Desktop Entry]
-          Name=Bob Neovim Manager
-          Exec=bob
-          Icon=bob
-          Type=Application
-          Categories=Utility;Development;
-          Comment=A cross-platform Neovim version manager
-          EOF
-          cp AppDir/bob.desktop AppDir/usr/share/applications/
+          # cargo-appimage reads package.metadata.appimage from Cargo.toml
+          cargo appimage
 
-          # Verify the file exists right before linuxdeploy
-          ls -l AppDir/usr/bin/bob
+          # verify AppImage exists in the canonical location
+          if ! ls target/appimage/*.AppImage >/dev/null 2>&1; then
+            echo "No AppImage found under target/appimage/; listing for debugging:"
+            ls -la target || true
+            ls -la target/appimage || true
+            exit 1
+          fi
 
-          export UPD_INFO="gh-releases-zsync|Matsuuu|bob|latest|bob-${{ matrix.os.ARCH }}.AppImage.zsync"
-          export OUTPUT="bob-${{ matrix.os.ARCH }}.AppImage"
-
-          # Change --executable path to be relative to CWD
-          ./linuxdeploy --appdir AppDir --executable AppDir/usr/bin/bob --desktop-file AppDir/bob.desktop --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/bob.png --output appimage
-
+          echo "Found AppImage: $(ls target/appimage/*.AppImage | head -n1)"
       - name: Setup Bob build directory
         run: |
           mkdir build
@@ -199,6 +194,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}-appimage"
-          path: "bob-${{ matrix.os.ARCH }}.AppImage*"
+          path: "target/appimage/*.AppImage"
           if-no-files-found: error
           retention-days: 7

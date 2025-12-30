@@ -122,3 +122,8 @@ bin-dir = "bob-macos-arm/{ bin }"
 [package.metadata.binstall.overrides.x86_64-apple-darwin]
 pkg-url = "{ repo }/releases/download/v{ version }/bob-macos-x86_64.{ archive-format }"
 bin-dir = "bob-macos-x86_64/{ bin }"
+
+[package.metadata.appimage]
+assets = ["resources"]
+icon = "resources/bob-icon.png"
+desktop_entry = "resources/bob.desktop"
