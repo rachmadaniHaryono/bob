@@ -167,21 +167,15 @@ jobs:
           # cargo-appimage reads package.metadata.appimage from Cargo.toml
           cargo appimage
 
-          # Find produced AppImage (workspace root or target/), normalize name to upload pattern
-          APPIMAGE=$(ls *.AppImage 2>/dev/null | head -n1 || true)
-          if [ -z "$APPIMAGE" ]; then
-            APPIMAGE=$(ls target/*.AppImage 2>/dev/null | head -n1 || true)
-          fi
-
-          if [ -n "$APPIMAGE" ]; then
-            echo "Found AppImage: $APPIMAGE"
-            mv "$APPIMAGE" "bob-${{ matrix.os.ARCH }}.AppImage" || true
-          else
-            echo "No AppImage found; listing workspace for debugging:"
-            ls -la
+          # verify AppImage exists in the canonical location
+          if ! ls target/appimage/*.AppImage >/dev/null 2>&1; then
+            echo "No AppImage found under target/appimage/; listing for debugging:"
             ls -la target || true
+            ls -la target/appimage || true
             exit 1
           fi
+
+          echo "Found AppImage: $(ls target/appimage/*.AppImage | head -n1)"
       - name: Setup Bob build directory
         run: |
           mkdir build
@@ -200,6 +194,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "bob-${{ matrix.os.NAME }}-${{ matrix.os.ARCH }}-appimage"
-          path: "bob-${{ matrix.os.ARCH }}.AppImage*"
+          path: "target/appimage/*.AppImage"
           if-no-files-found: error
           retention-days: 7
