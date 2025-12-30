@@ -29,7 +29,6 @@ Thanks for wanting to contribute! Bob is community-driven and we appreciate all 
 
 - Rust toolchain ([rustup](https://rustup.rs/))
 - Git
-- OpenSSL (optional, for `native-tls` feature)
 
 ### Optional: Building Neovim
 
