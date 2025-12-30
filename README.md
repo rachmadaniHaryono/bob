@@ -50,8 +50,6 @@ Make sure you don't have Neovim already installed via other ways e.g. a package 
 
 Make sure [rustup](https://www.rust-lang.org/tools/install) is installed.
 
-(Optional) `openssl` if built with `native-tls` feature.
-
 #### Building Neovim
 
 For further information refer to the [Neovim wiki](https://github.com/neovim/neovim/wiki/Building-Neovim#build-prerequisites).
@@ -96,7 +94,7 @@ Each script downloads the latest release for your platform and links the `bob` b
 
 ### Install from releases
 
-1. Download the bob release suitable for your platform: either `bob-{platform}-x86_64.zip` for the standard version or `bob-{platform}-x86_64-openssl.zip` for the OpenSSL version.
+1. Download the bob release suitable for your platform `bob-{platform}-x86_64.zip`
 2. Unzip it
 3. Run it with `bob`
 4. Linux users can also grab the AppImage artifacts (e.g., `bob-linux-x86_64-appimage.zip` or `bob-linux-arm-appimage.zip`) and follow the same unpack-and-run steps.
@@ -108,14 +106,7 @@ Each script downloads the latest release for your platform and links the `bob` b
 
 ### Install from source
 
-For the standard version:
-
 1. `cargo install --git https://github.com/MordechaiHadad/bob.git`
-2. Run Bob with `bob`
-
-For the OpenSSL version:
-
-1. To install, include the `--no-default-features --features native-tls` flags with your command:  `cargo install --git https://github.com/MordechaiHadad/bob.git --no-default-features --features native-tls`
 2. Run Bob with `bob`
 
 ### Install from crates.io
