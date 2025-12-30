@@ -142,7 +142,23 @@ jobs:
       - name: Install AppImage tools & cargo-appimage
         if: matrix.os.NAME == 'linux'
         run: |
+          set -euo pipefail
           sudo apt update && sudo apt install -y libfuse2
+
+          ARCH="${{ matrix.os.ARCH }}"
+          if [ "$ARCH" = "arm" ] || [ "$ARCH" = "aarch64" ]; then
+            URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage"
+          else
+            URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          fi
+
+          echo "Downloading appimagetool from $URL"
+          wget -c "$URL" -O appimagetool
+          chmod +x appimagetool
+
+          # Move into PATH so tooling can call it
+          sudo mv appimagetool /usr/local/bin/appimagetool
+          echo "appimagetool installed at: $(command -v appimagetool)"
 
           cargo install cargo-appimage --locked
       - name: Build AppImage with cargo-appimage
