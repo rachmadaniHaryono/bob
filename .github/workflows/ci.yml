@@ -139,48 +139,33 @@ jobs:
         with:
           command: build
           args: --locked --profile optimized ${{ matrix.os.TARGET != '' && format('--target {0}', matrix.os.TARGET) || '' }}
-      - name: Install AppImage tools
+      - name: Install AppImage tools & cargo-appimage
         if: matrix.os.NAME == 'linux'
         run: |
-          sudo apt update && sudo apt install -y libfuse2 # Needed by AppImage/linuxdeploy
+          sudo apt update && sudo apt install -y libfuse2
 
-          # Determine the correct architecture for linuxdeploy download
-          DOWNLOAD_ARCH=${{ matrix.os.ARCH }}
-          if [[ "${{ matrix.os.ARCH }}" == "arm" ]]; then
-            DOWNLOAD_ARCH="aarch64"
+          cargo install cargo-appimage --locked
+      - name: Build AppImage with cargo-appimage
+        if: matrix.os.NAME == 'linux'
+        run: |
+          # cargo-appimage reads package.metadata.appimage from Cargo.toml
+          cargo appimage --release || true
+
+          # Find produced AppImage (workspace root or target/), normalize name to upload pattern
+          APPIMAGE=$(ls *.AppImage 2>/dev/null | head -n1 || true)
+          if [ -z "$APPIMAGE" ]; then
+            APPIMAGE=$(ls target/*.AppImage 2>/dev/null | head -n1 || true)
           fi
 
-          echo "Downloading linuxdeploy tools for architecture: $DOWNLOAD_ARCH"
-          wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$DOWNLOAD_ARCH.AppImage" -O linuxdeploy
-          wget -c "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-$DOWNLOAD_ARCH.AppImage" -O linuxdeploy-plugin-appimage
-          chmod +x linuxdeploy linuxdeploy-plugin-appimage
-
-      - name: Prepare AppDir
-        if: matrix.os.NAME == 'linux'
-        run: |
-          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
-          cp target/optimized/bob AppDir/usr/bin/
-          cp resources/bob-icon.png AppDir/usr/share/icons/hicolor/256x256/apps/bob.png
-          cat <<EOF > AppDir/bob.desktop
-          [Desktop Entry]
-          Name=Bob Neovim Manager
-          Exec=bob
-          Icon=bob
-          Type=Application
-          Categories=Utility;Development;
-          Comment=A cross-platform Neovim version manager
-          EOF
-          cp AppDir/bob.desktop AppDir/usr/share/applications/
-
-          # Verify the file exists right before linuxdeploy
-          ls -l AppDir/usr/bin/bob
-
-          export UPD_INFO="gh-releases-zsync|Matsuuu|bob|latest|bob-${{ matrix.os.ARCH }}.AppImage.zsync"
-          export OUTPUT="bob-${{ matrix.os.ARCH }}.AppImage"
-
-          # Change --executable path to be relative to CWD
-          ./linuxdeploy --appdir AppDir --executable AppDir/usr/bin/bob --desktop-file AppDir/bob.desktop --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/bob.png --output appimage
-
+          if [ -n "$APPIMAGE" ]; then
+            echo "Found AppImage: $APPIMAGE"
+            mv "$APPIMAGE" "bob-${{ matrix.os.ARCH }}.AppImage" || true
+          else
+            echo "No AppImage found; listing workspace for debugging:"
+            ls -la
+            ls -la target || true
+            exit 1
+          fi
       - name: Setup Bob build directory
         run: |
           mkdir build
