@@ -170,7 +170,7 @@ pub async fn switch(config: &Config, version: &ParsedVersion) -> Result<()> {
 ///
 /// This function gets the current executable's path, determines the installation directory, creates it if it doesn't exist, adds it to the system's PATH, and copies the current executable to the installation directory as "nvim" or "nvim.exe" (on Windows).
 ///
-/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function checks its version. If the version matches the current version, the function does nothing. Otherwise, it replaces the file with the current executable.
+/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function compare the checksum. If the checksum matches, the function does nothing. Otherwise, it replaces the file with the current executable.
 ///
 /// # Arguments
 ///
