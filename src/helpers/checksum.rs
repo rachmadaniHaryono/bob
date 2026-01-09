@@ -31,3 +31,20 @@ pub fn sha256cmp(a: &Path, b: &Path, filename: &str) -> Result<bool> {
 
     Ok(hash == checksum)
 }
+
+fn hash_binary(path: &Path) -> Result<impl PartialEq> {
+    let mut hasher = Sha256::new();
+    let file = fs::File::open(path)?;
+    let mut reader = io::BufReader::new(file);
+    io::copy(&mut reader, &mut hasher)?;
+
+    let hash = hasher.finalize();
+    Ok(hash)
+}
+
+pub fn compare_binaries(origin: &Path, proxy: &Path) -> Result<bool> {
+    let origin_hash = hash_binary(origin)?;
+    let proxy_hash = hash_binary(proxy)?;
+
+    Ok(origin_hash == proxy_hash)
+}

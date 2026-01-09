@@ -45,11 +45,6 @@ async fn run() -> Result<()> {
     let rest_args = &args[1..];
 
     if exe_name.eq("nvim") {
-        if !rest_args.is_empty() && rest_args[0].eq("--&bob") {
-            print!("{}", env!("CARGO_PKG_VERSION"));
-            return Ok(());
-        }
-
         handle_nvim_process(&config.config, rest_args).await?;
 
         return Ok(());
