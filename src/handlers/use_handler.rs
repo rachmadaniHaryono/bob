@@ -3,13 +3,13 @@ use dialoguer::Confirm;
 use reqwest::Client;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use tokio::fs::{self};
 use tracing::info;
 
 use crate::config::{Config, ConfigFile};
 use crate::handlers::{InstallResult, install_handler};
 use crate::helpers;
+use crate::helpers::checksum::compare_binaries;
 use crate::helpers::directories::get_installation_directory;
 use crate::helpers::version::types::{ParsedVersion, VersionType};
 
@@ -170,7 +170,7 @@ pub async fn switch(config: &Config, version: &ParsedVersion) -> Result<()> {
 ///
 /// This function gets the current executable's path, determines the installation directory, creates it if it doesn't exist, adds it to the system's PATH, and copies the current executable to the installation directory as "nvim" or "nvim.exe" (on Windows).
 ///
-/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function checks its version. If the version matches the current version, the function does nothing. Otherwise, it replaces the file with the current executable.
+/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function compare the checksum. If the checksum matches, the function does nothing. Otherwise, it replaces the file with the current executable.
 ///
 /// # Arguments
 ///
@@ -211,16 +211,10 @@ async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
         installation_dir.push("nvim");
     }
 
-    if fs::metadata(&installation_dir).await.is_ok() {
-        let output = Command::new(&installation_dir)
-            .arg("--&bob")
-            .output()?
-            .stdout;
-        let version = String::from_utf8(output)?.trim().to_string();
-
-        if version == env!("CARGO_PKG_VERSION") {
-            return Ok(());
-        }
+    if fs::metadata(&installation_dir).await.is_ok()
+        && compare_binaries(&exe_path, &installation_dir)?
+    {
+        return Ok(());
     }
 
     info!("Updating neovim proxy");
