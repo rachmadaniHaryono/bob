@@ -8,11 +8,21 @@ use crate::{
     version::parse_version_type,
 };
 use anyhow::Result;
-use clap::{Args, CommandFactory, Parser, ValueEnum};
+use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use clap_complete::shells;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use reqwest::{Client, Error};
-use tracing::info;
+use std::sync::OnceLock;
+use tracing::{debug, info};
+use tracing_subscriber::Registry;
+use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::reload;
+use tracing_subscriber::util::SubscriberInitExt;
+
+/// Global handle used by [`setup_tracing`] to hot-swap the log filter that
+/// was originally installed by [`init_tracing`].
+static FILTER_RELOAD_HANDLE: OnceLock<reload::Handle<EnvFilter, Registry>> = OnceLock::new();
 
 /// Creates a new `reqwest::Client` with default headers.
 ///
@@ -51,10 +61,24 @@ fn create_reqwest_client() -> Result<Client, Error> {
     Ok(client)
 }
 
+/// Top-level CLI options wrapper.
+///
+/// This struct captures global flags (like verbosity) and flattens the
+/// subcommand enum so that `-v`/`--verbose` can appear before any subcommand.
+#[derive(Debug, Parser)]
+#[command(version, about = "A version manager for neovim", long_about = None)]
+pub struct Opts {
+    /// Increase verbosity (-v for DEBUG, -vv for TRACE)
+    #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
+    pub verbose: u8,
+
+    #[command(subcommand)]
+    pub command: Cli,
+}
+
 // The `Cli` enum represents the different commands that can be used in the command-line interface.
 #[derive(Debug, Parser)]
-#[command(version)]
-enum Cli {
+pub(crate) enum Cli {
     /// Switch to the specified version, by default will auto-invoke
     /// install command if the version is not installed already
     Use {
@@ -172,7 +196,7 @@ pub struct Update {
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[allow(clippy::enum_variant_names)]
-enum Shell {
+pub(crate) enum Shell {
     Bash,
     Elvish,
     Fish,
@@ -214,6 +238,68 @@ impl clap_complete::Generator for Shell {
     }
 }
 
+/// Installs the global tracing subscriber with a reload-capable filter layer.
+///
+/// The subscriber starts at **INFO** level. Call [`setup_tracing`] later to
+/// hot-swap the filter based on CLI verbosity / `RUST_LOG`.
+///
+/// This must be called exactly once, at the very start of `main`.
+///
+/// # Errors
+///
+/// Returns an error if the subscriber or reload handle has already been
+/// initialised.
+pub fn init_tracing() -> Result<()> {
+    let env_filter = EnvFilter::new("info");
+    let (filter_layer, reload_handle) = reload::Layer::new(env_filter);
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .init();
+
+    FILTER_RELOAD_HANDLE
+        .set(reload_handle)
+        .map_err(|_| anyhow::anyhow!("Tracing reload handle already initialised"))?;
+
+    Ok(())
+}
+
+/// Reconfigures the global tracing filter based on CLI verbosity and `RUST_LOG`.
+///
+/// Precedence:
+/// 1. If `verbose > 0`: 1 → DEBUG, 2+ → TRACE.
+/// 2. Else if `RUST_LOG` is set and valid, use it via [`EnvFilter::try_from_default_env`].
+/// 3. Otherwise keep the existing INFO default (no-op).
+///
+/// # Errors
+///
+/// Returns an error if [`init_tracing`] was not called first, or if the
+/// filter reload fails.
+pub fn setup_tracing(verbose: u8) -> Result<()> {
+    let env_filter = if verbose > 0 {
+        match verbose {
+            1 => EnvFilter::new("debug"),
+            _ => EnvFilter::new("trace"),
+        }
+    } else {
+        match EnvFilter::try_from_default_env() {
+            Ok(filter) => filter,
+            Err(_) => return Ok(()), // already at INFO from init, nothing to change
+        }
+    };
+
+    let handle = FILTER_RELOAD_HANDLE
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("Tracing not initialised — call init_tracing first"))?;
+
+    handle.reload(env_filter)?;
+
+    debug!("Tracing subscriber reconfigured (verbose={verbose})");
+
+    Ok(())
+}
+
 /// Starts the CLI application.
 ///
 /// This function takes a `Config` object as input and returns a `Result`. It creates a Reqwest client, parses the CLI arguments, and then handles the arguments based on their type.
@@ -234,7 +320,11 @@ impl clap_complete::Generator for Shell {
 /// ```
 pub async fn start(config: ConfigFile) -> Result<()> {
     let client = create_reqwest_client()?;
-    let cli = Cli::parse();
+    let opts = Opts::parse();
+
+    setup_tracing(opts.verbose)?;
+
+    let cli = opts.command;
 
     if cli.needs_running_check()
         && !config.config.ignore_running_instances.unwrap_or(true)
@@ -283,7 +373,7 @@ pub async fn start(config: ConfigFile) -> Result<()> {
         Cli::Erase => erase_handler::start(config.config).await?,
         Cli::List => list_handler::start(config.config).await?,
         Cli::Complete { shell } => {
-            clap_complete::generate(shell, &mut Cli::command(), "bob", &mut std::io::stdout());
+            clap_complete::generate(shell, &mut Opts::command(), "bob", &mut std::io::stdout());
         }
         Cli::Update(data) => {
             update_handler::start(data, &client, config).await?;
