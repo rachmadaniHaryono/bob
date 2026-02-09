@@ -5,7 +5,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs::{self};
-use tracing::info;
+use tracing::{debug, info, trace};
 
 use crate::config::{Config, ConfigFile};
 use crate::handlers::{InstallResult, install_handler};
@@ -196,10 +196,17 @@ pub async fn switch(config: &Config, version: &ParsedVersion) -> Result<()> {
 /// let config = Config::default();
 /// copy_nvim_proxy(&config).await.unwrap();
 /// ```
+#[tracing::instrument(skip(config))]
 async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
     let exe_path = env::current_exe().unwrap();
+    trace!("copy_nvim_proxy: current_exe = {}", exe_path.display());
     let mut installation_dir =
         helpers::directories::get_installation_directory(&config.config).await?;
+
+    trace!(
+        "copy_nvim_proxy: installation_dir (pre-filename) = {}",
+        installation_dir.display()
+    );
 
     if fs::metadata(&installation_dir).await.is_err() {
         fs::create_dir_all(&installation_dir).await?;
@@ -211,20 +218,51 @@ async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
         installation_dir.push("nvim");
     }
 
+    trace!(
+        "copy_nvim_proxy: target_file = {}",
+        installation_dir.display()
+    );
+
     if fs::metadata(&installation_dir).await.is_ok() {
+        debug!(
+            "Existing neovim proxy detected at {} - checking version",
+            installation_dir.display()
+        );
+        trace!(
+            "Invoking proxy to get version: {} --&bob",
+            installation_dir.display()
+        );
+
         let output = Command::new(&installation_dir)
             .arg("--&bob")
             .output()?
             .stdout;
         let version = String::from_utf8(output)?.trim().to_string();
 
+        debug!("Existing proxy version = {}", version);
         if version == env!("CARGO_PKG_VERSION") {
+            debug!(
+                "Proxy version matches current package version ({}). Skipping copy.",
+                version
+            );
             return Ok(());
+        } else {
+            debug!(
+                "Proxy version differs (installed = {}, package = {}). Proceeding to update.",
+                version,
+                env!("CARGO_PKG_VERSION")
+            );
         }
     }
 
     info!("Updating neovim proxy");
+    trace!(
+        "copy_nvim_proxy: copying {} -> {}",
+        exe_path.display(),
+        installation_dir.display()
+    );
     copy_file_with_error_handling(&exe_path, &installation_dir).await?;
+    trace!("copy_nvim_proxy: copy completed successfully");
 
     Ok(())
 }
@@ -268,15 +306,44 @@ async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[tracing::instrument(skip(old_path, new_path))]
 async fn copy_file_with_error_handling(old_path: &Path, new_path: &Path) -> Result<()> {
+    trace!(
+        "copy_file_with_error_handling: attempting copy {} -> {}",
+        old_path.display(),
+        new_path.display()
+    );
     match fs::copy(&old_path, &new_path).await {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            trace!(
+                "copy_file_with_error_handling: copy succeeded {} -> {}",
+                old_path.display(),
+                new_path.display()
+            );
+            Ok(())
+        }
         Err(e) => match e.raw_os_error() {
-            Some(26 | 32) => Err(anyhow::anyhow!(
-                "The file {} is busy. Please make sure to close any processes using it.",
-                old_path.display()
-            )),
-            _ => Err(anyhow::anyhow!(e).context("Failed to copy file")),
+            Some(26 | 32) => {
+                debug!(
+                    "copy_file_with_error_handling: file busy copying {} -> {} (OS error: {:?})",
+                    old_path.display(),
+                    new_path.display(),
+                    e.raw_os_error()
+                );
+                Err(anyhow::anyhow!(
+                    "The file {} is busy. Please make sure to close any processes using it.",
+                    old_path.display()
+                ))
+            }
+            _ => {
+                debug!(
+                    "copy_file_with_error_handling: copy failed {} -> {}: {:?}",
+                    old_path.display(),
+                    new_path.display(),
+                    e
+                );
+                Err(anyhow::anyhow!(e).context("Failed to copy file"))
+            }
         },
     }
 }
