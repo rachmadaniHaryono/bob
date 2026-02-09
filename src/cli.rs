@@ -72,6 +72,7 @@ pub struct Opts {
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
     pub verbose: u8,
 
+    /// The subcommand to run (e.g., `use`, `install`, `list`)
     #[command(subcommand)]
     pub command: Cli,
 }

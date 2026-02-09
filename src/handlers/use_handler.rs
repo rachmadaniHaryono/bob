@@ -3,7 +3,7 @@ use dialoguer::Confirm;
 use reqwest::Client;
 use std::env;
 use std::path::{Path, PathBuf};
-use tokio::fs::{self};
+use tokio::fs;
 use tracing::{debug, info, trace};
 
 use crate::config::{Config, ConfigFile};
@@ -291,20 +291,19 @@ async fn copy_file_with_error_handling(old_path: &Path, new_path: &Path) -> Resu
             );
             Ok(())
         }
-        Err(e) => match e.raw_os_error() {
-            Some(26 | 32) => {
+        Err(e) => {
+            if let Some(code @ (26 | 32)) = e.raw_os_error() {
                 debug!(
-                    "copy_file_with_error_handling: file busy copying {} -> {} (OS error: {:?})",
+                    "copy_file_with_error_handling: file busy copying {} -> {} (OS error: {})",
                     old_path.display(),
                     new_path.display(),
-                    e.raw_os_error()
+                    code
                 );
                 Err(anyhow::anyhow!(
                     "The file {} is busy. Please make sure to close any processes using it.",
                     old_path.display()
                 ))
-            }
-            _ => {
+            } else {
                 debug!(
                     "copy_file_with_error_handling: copy failed {} -> {}: {:?}",
                     old_path.display(),
@@ -313,7 +312,7 @@ async fn copy_file_with_error_handling(old_path: &Path, new_path: &Path) -> Resu
                 );
                 Err(anyhow::anyhow!(e).context("Failed to copy file"))
             }
-        },
+        }
     }
 }
 
