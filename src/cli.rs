@@ -68,7 +68,7 @@ fn create_reqwest_client() -> Result<Client, Error> {
 #[derive(Debug, Parser)]
 #[command(version, about = "A version manager for neovim", long_about = None)]
 pub struct Opts {
-    /// Increase verbosity (-v for DEBUG, -vv for TRACE)
+    /// Increase verbosity (-v for DEBUG, -vv for TRACE, -vvv for global TRACE)
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
     pub verbose: u8,
 
@@ -278,14 +278,16 @@ pub fn init_tracing() -> Result<()> {
 /// filter reload fails.
 pub fn setup_tracing(verbose: u8) -> Result<()> {
     let env_filter = if verbose > 0 {
+        let crate_name = env!("CARGO_CRATE_NAME");
         match verbose {
-            1 => EnvFilter::new("debug"),
-            _ => EnvFilter::new("trace"),
+            1 => EnvFilter::new(format!("{crate_name}=debug")),
+            2 => EnvFilter::new(format!("{crate_name}=trace")),
+            _ => EnvFilter::new(format!("trace")),
         }
     } else {
         match EnvFilter::try_from_default_env() {
             Ok(filter) => filter,
-            Err(_) => return Ok(()), // already at INFO from init, nothing to change
+            Err(_) => return Ok(()),
         }
     };
 
