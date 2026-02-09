@@ -282,7 +282,7 @@ pub fn setup_tracing(verbose: u8) -> Result<()> {
         match verbose {
             1 => EnvFilter::new(format!("{crate_name}=debug")),
             2 => EnvFilter::new(format!("{crate_name}=trace")),
-            _ => EnvFilter::new(format!("trace")),
+            _ => EnvFilter::new("trace"),
         }
     } else {
         match EnvFilter::try_from_default_env() {
