@@ -79,6 +79,7 @@ optional = false
 
 [dependencies.tracing-subscriber]
 version = "0.3.20"
+features = ["env-filter"]
 optional = false
 
 [target.'cfg(unix)'.dependencies.nix]
@@ -91,7 +92,7 @@ tar = "0.4"
 
 [target."cfg(windows)".dependencies]
 winreg = "0.10.1"
-zip = "2.2.0"
+zip = "7.4.0"
 
 
 [[bin]]

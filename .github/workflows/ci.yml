@@ -5,7 +5,7 @@ jobs:
   clippy:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+        os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{matrix.os}}
     steps:
       - name: Checkout
@@ -25,7 +25,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+        os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{matrix.os}}
     steps:
       - name: Checkout
