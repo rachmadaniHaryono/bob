@@ -99,6 +99,15 @@ Each script downloads the latest release for your platform and links the `bob` b
 3. Run it with `bob`
 4. Linux users can also grab the AppImage artifacts (e.g., `bob-linux-x86_64-appimage.zip` or `bob-linux-arm-appimage.zip`) and follow the same unpack-and-run steps.
 
+### Install from nightly releases
+
+Nightly releases are built every 72 hours and contain the latest changes from the `dev` branch. Please note that these are pre-releases and may contain bugs or unstable features. Use them at your own risk.
+
+1. Go to the [Releases page](https://github.com/MordechaiHadad/bob/releases) and look for the latest release tagged with `nightly-YYYYMMDD`.
+2. Download the bob release suitable for your platform `bob-{platform}-x86_64.zip`
+3. Unzip it
+4. Run it with `bob`
+
 ### Install with pacman
 
 1. On Arch Linux, you can install `bob` from the [extra repository](https://archlinux.org/packages/extra/x86_64/bob/) using pacman: `pacman -S bob`
