@@ -92,7 +92,7 @@ tar = "0.4"
 
 [target."cfg(windows)".dependencies]
 winreg = "0.10.1"
-zip = "7.4.0"
+zip = "8.1.0"
 
 
 [[bin]]
