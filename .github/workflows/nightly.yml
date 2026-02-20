@@ -151,15 +151,11 @@ jobs:
           find . -mindepth 1 -maxdepth 1 -type d -empty -delete
           echo "Prepared assets:"
           ls -l
-      - name: Get Date
-        id: get-date
-        run: echo "DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
-      - name: Release
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: nightly-${{ env.DATE }}
-          name: "Nightly Release ${{ env.DATE }}"
+          tag_name: nightly
+          name: "Nightly Development Build"
           prerelease: true
-          generate_release_notes: true
-          files: |
-            ./artifacts/*
+          make_latest: true
+          files: artifacts/**/*

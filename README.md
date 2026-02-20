@@ -103,7 +103,7 @@ Each script downloads the latest release for your platform and links the `bob` b
 
 Nightly releases are built every 72 hours and contain the latest changes from the `dev` branch. Please note that these are pre-releases and may contain bugs or unstable features. Use them at your own risk.
 
-1. Go to the [Releases page](https://github.com/MordechaiHadad/bob/releases) and look for the latest release tagged with `nightly-YYYYMMDD`.
+1. Go to the [Releases page](https://github.com/MordechaiHadad/bob/releases) and look for the release tagged with `nightly`.
 2. Download the bob release suitable for your platform `bob-{platform}-x86_64.zip`
 3. Unzip it
 4. Run it with `bob`
