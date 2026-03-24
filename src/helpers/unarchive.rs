@@ -273,7 +273,7 @@ fn expand(downloaded_file: &LocalVersion) -> Result<()> {
         downloaded_file.path, downloaded_file.file_name
     ));
 
-    let file = PathBuf::from(downloaded_file.file_name).join("bin/nvim");
+    let file = PathBuf::from(&downloaded_file.file_name).join("bin/nvim");
     let mut perms = fs::metadata(file)?.permissions();
     perms.set_mode(0o755);
     fs::set_permissions(file, perms)?;
