@@ -9,7 +9,7 @@ use anyhow::Result;
 use config::ConfigFile;
 use helpers::{processes::handle_nvim_process, version};
 use std::{env, process::exit};
-use tracing::{Level, error, warn};
+use tracing::{error, warn};
 
 pub(crate) use crate::consts::{
     ENVIRONMENT_VAR_REGEX, FILETYPE_EXT, HASH_REGEX, NIGHTLY_REGEX, VERSION_REGEX,
@@ -17,11 +17,8 @@ pub(crate) use crate::consts::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let collector = tracing_subscriber::fmt()
-        .with_target(false)
-        .with_max_level(Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(collector)?;
+    cli::init_tracing()?;
+
     if let Err(error) = run().await {
         error!("Error: {error}");
         exit(1);
@@ -45,11 +42,6 @@ async fn run() -> Result<()> {
     let rest_args = &args[1..];
 
     if exe_name.eq("nvim") {
-        if !rest_args.is_empty() && rest_args[0].eq("--&bob") {
-            print!("{}", env!("CARGO_PKG_VERSION"));
-            return Ok(());
-        }
-
         handle_nvim_process(&config.config, rest_args).await?;
 
         return Ok(());

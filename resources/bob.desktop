@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bob Neovim Manager
+Comment=A cross-platform Neovim version manager
+Exec=bob
+Icon=bob
+Terminal=false
+Categories=Utility;Development;

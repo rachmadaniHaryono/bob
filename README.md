@@ -40,6 +40,7 @@ Bob is a cross-platform and easy-to-use Neovim version manager, allowing for eas
 
 - **2024-05-17**: Support for `nvim-qt` is now deprecated as Neovim no longer supports it in newer releases. If you're currently using `nvim-qt`, we recommend switching to a different Neovim GUI or using Neovim in the terminal. Please refer to the Neovim documentation for more information on supported GUIs.
 - **2024-05-19**: Important notice for users who built Neovim from source using a commit hash before the newest Bob version: Due to recent changes in Bob, these versions will need to be rebuilt. Alternatively, you can manually add a file named `full-hash.txt` at the root of the directory. This file should contain the full hash of the commit used to build Neovim. This change ensures better tracking and management of versions built from source. We apologize for any inconvenience and appreciate your understanding.
+- **2025-12-30**: OpenSSL builds are now fully deprecated due to redundancy and maintenance overhead. Please switch to the standard bob builds.
 
 ## 📦 Requirements
 
@@ -48,8 +49,6 @@ Make sure you don't have Neovim already installed via other ways e.g. a package 
 #### Building bob
 
 Make sure [rustup](https://www.rust-lang.org/tools/install) is installed.
-
-(Optional) `openssl` if built with `native-tls` feature.
 
 #### Building Neovim
 
@@ -95,10 +94,19 @@ Each script downloads the latest release for your platform and links the `bob` b
 
 ### Install from releases
 
-1. Download the bob release suitable for your platform: either `bob-{platform}-x86_64.zip` for the standard version or `bob-{platform}-x86_64-openssl.zip` for the OpenSSL version.
+1. Download the bob release suitable for your platform `bob-{platform}-x86_64.zip`
 2. Unzip it
 3. Run it with `bob`
 4. Linux users can also grab the AppImage artifacts (e.g., `bob-linux-x86_64-appimage.zip` or `bob-linux-arm-appimage.zip`) and follow the same unpack-and-run steps.
+
+### Install from nightly releases
+
+Nightly releases are built every 72 hours and contain the latest changes from the `dev` branch. Please note that these are pre-releases and may contain bugs or unstable features. Use them at your own risk.
+
+1. Go to the [Releases page](https://github.com/MordechaiHadad/bob/releases) and look for the release tagged with `nightly`.
+2. Download the bob release suitable for your platform `bob-{platform}-x86_64.zip`
+3. Unzip it
+4. Run it with `bob`
 
 ### Install with pacman
 
@@ -107,14 +115,7 @@ Each script downloads the latest release for your platform and links the `bob` b
 
 ### Install from source
 
-For the standard version:
-
 1. `cargo install --git https://github.com/MordechaiHadad/bob.git`
-2. Run Bob with `bob`
-
-For the OpenSSL version:
-
-1. To install, include the `--no-default-features --features native-tls` flags with your command:  `cargo install --git https://github.com/MordechaiHadad/bob.git --no-default-features --features native-tls`
 2. Run Bob with `bob`
 
 ### Install from crates.io

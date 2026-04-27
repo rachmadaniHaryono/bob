@@ -3,13 +3,13 @@ use dialoguer::Confirm;
 use reqwest::Client;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use tokio::fs::{self};
-use tracing::info;
+use tokio::fs;
+use tracing::{debug, info, trace};
 
 use crate::config::{Config, ConfigFile};
 use crate::handlers::{InstallResult, install_handler};
 use crate::helpers;
+use crate::helpers::checksum::compare_binaries;
 use crate::helpers::directories::get_installation_directory;
 use crate::helpers::version::types::{ParsedVersion, VersionType};
 
@@ -170,7 +170,7 @@ pub async fn switch(config: &Config, version: &ParsedVersion) -> Result<()> {
 ///
 /// This function gets the current executable's path, determines the installation directory, creates it if it doesn't exist, adds it to the system's PATH, and copies the current executable to the installation directory as "nvim" or "nvim.exe" (on Windows).
 ///
-/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function checks its version. If the version matches the current version, the function does nothing. Otherwise, it replaces the file with the current executable.
+/// If a file named "nvim" or "nvim.exe" already exists in the installation directory, the function compare the checksum. If the checksum matches, the function does nothing. Otherwise, it replaces the file with the current executable.
 ///
 /// # Arguments
 ///
@@ -196,10 +196,17 @@ pub async fn switch(config: &Config, version: &ParsedVersion) -> Result<()> {
 /// let config = Config::default();
 /// copy_nvim_proxy(&config).await.unwrap();
 /// ```
+#[tracing::instrument(skip(config))]
 async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
     let exe_path = env::current_exe().unwrap();
+    trace!("copy_nvim_proxy: current_exe = {}", exe_path.display());
     let mut installation_dir =
         helpers::directories::get_installation_directory(&config.config).await?;
+
+    trace!(
+        "copy_nvim_proxy: installation_dir (pre-filename) = {}",
+        installation_dir.display()
+    );
 
     if fs::metadata(&installation_dir).await.is_err() {
         fs::create_dir_all(&installation_dir).await?;
@@ -211,20 +218,20 @@ async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
         installation_dir.push("nvim");
     }
 
-    if fs::metadata(&installation_dir).await.is_ok() {
-        let output = Command::new(&installation_dir)
-            .arg("--&bob")
-            .output()?
-            .stdout;
-        let version = String::from_utf8(output)?.trim().to_string();
-
-        if version == env!("CARGO_PKG_VERSION") {
-            return Ok(());
-        }
+    if fs::metadata(&installation_dir).await.is_ok()
+        && compare_binaries(&exe_path, &installation_dir)?
+    {
+        return Ok(());
     }
 
     info!("Updating neovim proxy");
+    trace!(
+        "copy_nvim_proxy: copying {} -> {}",
+        exe_path.display(),
+        installation_dir.display()
+    );
     copy_file_with_error_handling(&exe_path, &installation_dir).await?;
+    trace!("copy_nvim_proxy: copy completed successfully");
 
     Ok(())
 }
@@ -268,16 +275,44 @@ async fn copy_nvim_proxy(config: &ConfigFile) -> Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[tracing::instrument(skip(old_path, new_path))]
 async fn copy_file_with_error_handling(old_path: &Path, new_path: &Path) -> Result<()> {
+    trace!(
+        "copy_file_with_error_handling: attempting copy {} -> {}",
+        old_path.display(),
+        new_path.display()
+    );
     match fs::copy(&old_path, &new_path).await {
-        Ok(_) => Ok(()),
-        Err(e) => match e.raw_os_error() {
-            Some(26 | 32) => Err(anyhow::anyhow!(
-                "The file {} is busy. Please make sure to close any processes using it.",
-                old_path.display()
-            )),
-            _ => Err(anyhow::anyhow!(e).context("Failed to copy file")),
-        },
+        Ok(_) => {
+            trace!(
+                "copy_file_with_error_handling: copy succeeded {} -> {}",
+                old_path.display(),
+                new_path.display()
+            );
+            Ok(())
+        }
+        Err(e) => {
+            if let Some(code @ (26 | 32)) = e.raw_os_error() {
+                debug!(
+                    "copy_file_with_error_handling: file busy copying {} -> {} (OS error: {})",
+                    old_path.display(),
+                    new_path.display(),
+                    code
+                );
+                Err(anyhow::anyhow!(
+                    "The file {} is busy. Please make sure to close any processes using it.",
+                    old_path.display()
+                ))
+            } else {
+                debug!(
+                    "copy_file_with_error_handling: copy failed {} -> {}: {:?}",
+                    old_path.display(),
+                    new_path.display(),
+                    e
+                );
+                Err(anyhow::anyhow!(e).context("Failed to copy file"))
+            }
+        }
     }
 }
 
