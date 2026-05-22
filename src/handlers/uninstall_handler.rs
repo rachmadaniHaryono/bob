@@ -129,7 +129,7 @@ async fn uninstall_selections(client: &Client, config: &Config) -> Result<()> {
     };
 
     let selections = MultiSelect::with_theme(&theme)
-        .with_prompt("Toogle with space the versions you wish to uninstall:")
+        .with_prompt("Toggle with space the versions you wish to uninstall:")
         .items(&installed_versions)
         .interact_on_opt(&Term::stderr())?;
 
